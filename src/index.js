@@ -18,72 +18,51 @@
 
         var result = {};
 
-        // extract the protocol:
-        var m = cs.match(/^[\w-_.+!*'()$%]*:\/\//);
-        if (m) {
-            var protocol = decodeURI(m[0].replace(/:\/\//, ''));
-            if (protocol) {
-                result.protocol = protocol;
-            }
-            cs = cs.substr(m[0].length);
-        }
-
-        // extract user + password:
-        m = cs.match(/^([\w-_.+!*'()$%]*):?([\w-_.+!*'()$%]*)@/);
-        if (m) {
-            if (m[1]) {
-                result.user = decodeURI(m[1]);
-            }
-            if (m[2]) {
-                result.password = decodeURI(m[2]);
-            }
-            cs = cs.substr(m[0].length);
-        }
-
-        // extract hostname + port:
-        // if it starts now with `/`, it is the first segment, or else it is hostname:port
-        if (cs[0] !== '/') {
-            if (cs[0] === '[') {
-                // It is an IPv6, with [::] being the shortest possible
-                m = cs.match(/(\[([0-9a-z:%]{2,45})](?::([0-9]+))?)/i);
-            } else {
-                // It is either IPv4 or a name
-                m = cs.match(/(([a-z0-9.-]*)(?::([0-9]+))?)/i);
-            }
-            if (m) {
-                if (m[1]) {
-                    result.host = m[1];
+        var m = cs.match(/^(?:([^:\/?#\s]+):\/{2})?(?:([^@\/?#\s]+)@)?([^\/?#\s]+)?(?:\/([^?#\s]*))?(?:[?]([^#\s]+)|$)/);
+        if (m[5]) {
+            var params = {};
+            m[5].split('&').map(function (x) {
+                var a = x.split('=');
+                if (a[0] && a[1]) {
+                    params[a[0]] = a[1];
                 }
-                if (m[2]) {
-                    result.hostname = m[2];
-                }
-                if (m[3]) {
-                    result.port = parseInt(m[3]);
-                }
-                cs = cs.substr(m[0].length);
-            }
-        }
-
-        // extract segments:
-        m = cs.match(/\/([\w-_.+!*'()$%]+)/g);
-        if (m) {
-            result.segments = m.map(function (s) {
-                return decodeURI(s.substr(1));
             });
+            if (Object.keys(params).length) {
+                result.params = params;
+            }
         }
 
-        // extract parameters:
-        idx = cs.indexOf('?');
-        if (idx !== -1) {
-            cs = cs.substr(idx + 1);
-            m = cs.match(/([\w-_.+!*'()$%]+)=([\w-_.+!*'()$%]+)/g);
-            if (m) {
-                result.params = {};
-                m.forEach(function (s) {
-                    var a = s.split('=');
-                    result.params[decodeURI(a[0])] = decodeURI(a[1]);
-                });
+        if (m[1]) {
+            result.protocol = m[1];
+        }
+
+        var login = m[2] && m[2].split(':');
+        if (login) {
+            if (login[0]) {
+                result.user = login[0];
             }
+            if (login[1]) {
+                result.password = login[1];
+            }
+        }
+
+        if (m[3]) {
+            console.log('m[3]:', m[3]);
+            result.host = '';
+            var addr = m[3].split(':');
+            if (addr[0]) {
+                result.hostname = addr[0];
+                result.host = result.hostname;
+            }
+            if (addr[1]) {
+                result.port = addr[1];
+                result.host += ':' + result.port;
+            }
+        }
+
+        if (m[4]) {
+            var segments = m[4].split('/');
+            result.segments = segments;
         }
 
         return result;
@@ -97,3 +76,6 @@
         window.parseConnectionString = parseConnectionString;
     }
 })(this);
+
+var s = module.exports('://');
+
